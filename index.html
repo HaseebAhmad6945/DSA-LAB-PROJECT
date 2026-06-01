@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SortViz — DSA Sorting Visualizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ── Reset ─────────────────────────────── */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+/* ── Palette ────────────────────────────── */
+:root {
+  --clay-bg:      #1a1033;
+  --clay-surface: #231745;
+  --clay-card:    #2c1e55;
+  --clay-raised:  #352468;
+
+  --purple:  #a78bfa;
+  --pink:    #f472b6;
+  --teal:    #2dd4bf;
+  --amber:   #fbbf24;
+  --red:     #f87171;
+  --blue:    #60a5fa;
+  --green:   #34d399;
+
+  --text:    #ede9fe;
+  --text2:   #a78bfa;
+  --text3:   #7c6baa;
+
+  --shadow-sm:  0 2px 8px rgba(0,0,0,0.4);
+  --shadow-md:  0 4px 20px rgba(0,0,0,0.5);
+  --shadow-lg:  0 8px 40px rgba(0,0,0,0.6);
+
+  /* Clay glow colours */
+  --glow-purple: 0 0 20px rgba(167,139,250,0.25);
+  --glow-pink:   0 0 20px rgba(244,114,182,0.25);
+  --glow-teal:   0 0 20px rgba(45,212,191,0.25);
+}
+
+/* ── Body ───────────────────────────────── */
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--clay-bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Soft background blobs */
+body::before {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 600px 400px at 10% 20%,  rgba(124,63,255,0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 500px 350px at 90% 80%,  rgba(244,114,182,0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 400px 300px at 50% 50%,  rgba(45,212,191,0.05) 0%, transparent 70%);
+}
+
+.page { max-width: 1080px; margin: 0 auto; padding: 24px 20px 60px; position: relative; z-index: 1; }
+
+/* ── Clay card mixin ────────────────────── */
+.clay {
+  background: var(--clay-card);
+  border-radius: 20px;
+  border: 1.5px solid rgba(167,139,250,0.15);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+/* ── Header ─────────────────────────────── */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 14px;
+  padding: 20px 28px;
+  margin-bottom: 20px;
+}
+
+.logo { display: flex; align-items: center; gap: 14px; }
+
+.logo-orb {
+  width: 48px; height: 48px; border-radius: 16px;
+  background: linear-gradient(135deg, #7c3aed, #f472b6);
+  box-shadow: 0 4px 16px rgba(124,58,237,0.5);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
+
+.logo-text h1 {
+  font-family: 'Space Mono', monospace;
+  font-size: 22px; font-weight: 700;
+  background: linear-gradient(90deg, #a78bfa, #f472b6);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+
+.logo-text p {
+  font-size: 11px; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;
+}
+
+/* Server pill */
+.server-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border-radius: 40px;
+  background: var(--clay-raised);
+  border: 1.5px solid rgba(167,139,250,0.2);
+  font-family: 'Space Mono', monospace; font-size: 12px; color: var(--text2);
+  box-shadow: var(--shadow-sm);
+}
+
+.dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text3); transition: all 0.4s;
+}
+.dot.online  { background: var(--teal);  box-shadow: 0 0 10px var(--teal); animation: blink 2s infinite; }
+.dot.offline { background: var(--red);   box-shadow: 0 0 10px var(--red); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* ── Controls Panel ─────────────────────── */
+.controls { padding: 22px 26px; margin-bottom: 18px; }
+
+.ctrl-top { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+
+.ctrl-group { display: flex; flex-direction: column; gap: 7px; }
+
+.ctrl-label {
+  font-size: 10px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 1.5px; color: var(--text3);
+}
+
+/* Select + number inputs */
+select, input[type=number] {
+  background: var(--clay-raised);
+  border: 1.5px solid rgba(167,139,250,0.2);
+  border-radius: 12px; color: var(--text);
+  padding: 9px 14px; font-size: 14px; font-weight: 600;
+  font-family: 'Nunito', sans-serif;
+  outline: none; cursor: pointer;
+  box-shadow: var(--shadow-sm), inset 0 2px 4px rgba(0,0,0,0.2);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -webkit-appearance: none; appearance: none;
+}
+
+select:focus, input[type=number]:focus {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px rgba(167,139,250,0.2), var(--shadow-sm);
+}
+
+select { min-width: 175px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a78bfa' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 34px; }
+input[type=number] { width: 82px; }
+
+/* Order toggle (Asc/Desc) — only shows for bubble */
+.order-toggle {
+  display: none;
+  gap: 0;
+}
+.order-toggle.visible { display: flex; }
+.order-btn {
+  padding: 9px 16px; font-size: 13px; font-weight: 700;
+  border: 1.5px solid rgba(167,139,250,0.2);
+  background: var(--clay-raised); color: var(--text3);
+  cursor: pointer; transition: all 0.2s;
+  font-family: 'Nunito', sans-serif;
+}
+.order-btn:first-child { border-radius: 12px 0 0 12px; border-right: none; }
+.order-btn:last-child  { border-radius: 0 12px 12px 0; }
+.order-btn.active {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: #fff; border-color: transparent;
+  box-shadow: 0 4px 12px rgba(124,58,237,0.4);
+}
+
+/* Speed slider */
+input[type=range] {
+  -webkit-appearance: none; appearance: none;
+  width: 110px; height: 6px;
+  border-radius: 3px; background: var(--clay-raised);
+  border: 1.5px solid rgba(167,139,250,0.15);
+  outline: none; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  box-shadow: 0 2px 8px rgba(124,58,237,0.5);
+  cursor: pointer; transition: transform 0.15s;
+}
+input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+/* Buttons */
+.btn-row { display: flex; gap: 10px; align-items: flex-end; margin-left: auto; flex-wrap: wrap; }
+
+.btn {
+  padding: 10px 20px; border-radius: 14px;
+  font-size: 13px; font-weight: 800;
+  font-family: 'Nunito', sans-serif;
+  cursor: pointer; transition: all 0.18s;
+  border: 1.5px solid rgba(167,139,250,0.2);
+  background: var(--clay-raised); color: var(--text);
+  box-shadow: var(--shadow-sm), 0 3px 0 rgba(0,0,0,0.3);
+  white-space: nowrap;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-md), 0 5px 0 rgba(0,0,0,0.3); }
+.btn:active { transform: translateY(1px); box-shadow: var(--shadow-sm), 0 1px 0 rgba(0,0,0,0.3); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+
+.btn-sort {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  border-color: transparent; color: #fff;
+  box-shadow: 0 4px 16px rgba(124,58,237,0.45), 0 3px 0 rgba(80,20,160,0.6);
+}
+.btn-sort:hover { background: linear-gradient(135deg, #6d28d9, #9333ea); box-shadow: 0 6px 20px rgba(124,58,237,0.55), 0 5px 0 rgba(80,20,160,0.6); }
+
+.btn-stop {
+  background: linear-gradient(135deg, #be123c, #f43f5e);
+  border-color: transparent; color: #fff;
+  box-shadow: 0 4px 16px rgba(244,63,94,0.4), 0 3px 0 rgba(140,20,50,0.6);
+}
+.btn-stop:hover { box-shadow: 0 6px 20px rgba(244,63,94,0.5), 0 5px 0 rgba(140,20,50,0.6); }
+
+/* Custom array row */
+.custom-row {
+  display: flex; gap: 10px; align-items: center;
+  margin-top: 16px; padding-top: 16px;
+  border-top: 1px solid rgba(167,139,250,0.1);
+  flex-wrap: wrap;
+}
+.custom-label { font-size: 12px; font-weight: 700; color: var(--text3); white-space: nowrap; }
+input[type=text] {
+  flex: 1; min-width: 200px;
+  background: var(--clay-raised);
+  border: 1.5px solid rgba(167,139,250,0.2); border-radius: 12px;
+  color: var(--text); padding: 9px 14px;
+  font-size: 13px; font-family: 'Space Mono', monospace;
+  outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+  transition: border-color 0.2s;
+}
+input[type=text]:focus { border-color: var(--purple); }
+input[type=text]::placeholder { color: var(--text3); font-size: 12px; }
+
+/* ── Stats Row ──────────────────────────── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px; margin-bottom: 16px;
+}
+@media(max-width:640px) { .stats-row { grid-template-columns: repeat(2,1fr); } }
+
+.stat-card {
+  padding: 14px 18px; border-radius: 16px;
+  background: var(--clay-card);
+  border: 1.5px solid rgba(167,139,250,0.12);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.stat-label {
+  font-size: 10px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 1.5px; color: var(--text3); margin-bottom: 6px;
+}
+.stat-value {
+  font-family: 'Space Mono', monospace;
+  font-size: 24px; font-weight: 700; color: var(--text);
+}
+
+/* ── Progress bar ───────────────────────── */
+.progress-wrap {
+  height: 6px; border-radius: 3px;
+  background: var(--clay-raised);
+  margin-bottom: 16px; overflow: hidden;
+  border: 1px solid rgba(167,139,250,0.1);
+}
+#progress-bar {
+  height: 100%; width: 0%; border-radius: 3px;
+  background: linear-gradient(90deg, #7c3aed, #f472b6);
+  transition: width 0.12s;
+  box-shadow: 0 0 10px rgba(167,139,250,0.6);
+}
+
+/* ── Legend ─────────────────────────────── */
+.legend {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  padding: 14px 20px; border-radius: 16px;
+  background: var(--clay-card);
+  border: 1.5px solid rgba(167,139,250,0.1);
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+}
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--text3); }
+.legend-swatch { width: 12px; height: 12px; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+
+/* ── Visualizer card ────────────────────── */
+.viz-card {
+  padding: 22px 24px; margin-bottom: 14px;
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.viz-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 18px; flex-wrap: wrap; gap: 10px;
+}
+.algo-badge {
+  font-family: 'Space Mono', monospace; font-size: 12px;
+  padding: 5px 16px; border-radius: 40px;
+  background: linear-gradient(135deg, rgba(124,58,237,0.25), rgba(168,85,247,0.25));
+  border: 1px solid rgba(167,139,250,0.3); color: var(--purple);
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.step-info { font-size: 12px; color: var(--text3); font-weight: 700; font-family: 'Space Mono', monospace; }
+
+/* Bars */
+#bars-wrap {
+  width: 100%; height: 290px;
+  display: flex; align-items: flex-end; gap: 2px;
+}
+.bar {
+  flex: 1; border-radius: 6px 6px 0 0;
+  background: var(--text3); min-width: 3px;
+  transition: height 0.07s ease, background 0.07s ease;
+  box-shadow: 0 -2px 6px rgba(0,0,0,0.3);
+}
+
+/* ── Sorted array display ───────────────── */
+.sorted-section {
+  display: none;
+  padding: 20px 24px; margin-bottom: 14px;
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.sorted-section.visible { display: block; }
+
+.sorted-title {
+  font-size: 12px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 1.5px; color: var(--teal);
+  margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+}
+.sorted-title::before {
+  content: '✓'; display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 6px;
+  background: rgba(45,212,191,0.2); border: 1px solid rgba(45,212,191,0.4);
+  font-size: 11px;
+}
+
+.sorted-wrap {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  max-height: 160px; overflow-y: auto;
+  padding: 4px;
+}
+.sorted-wrap::-webkit-scrollbar { width: 4px; }
+.sorted-wrap::-webkit-scrollbar-track { background: transparent; }
+.sorted-wrap::-webkit-scrollbar-thumb { background: var(--purple); border-radius: 2px; }
+
+.sorted-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 40px; padding: 5px 10px;
+  border-radius: 10px; font-size: 13px; font-weight: 800;
+  font-family: 'Space Mono', monospace;
+  background: linear-gradient(135deg, rgba(45,212,191,0.2), rgba(45,212,191,0.1));
+  border: 1px solid rgba(45,212,191,0.3); color: var(--teal);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  animation: chipIn 0.3s ease backwards;
+}
+@keyframes chipIn { from{opacity:0;transform:scale(0.7)} to{opacity:1;transform:scale(1)} }
+
+.sorted-order-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 40px; font-size: 11px; font-weight: 800;
+  margin-left: 10px; text-transform: uppercase; letter-spacing: 1px;
+}
+.badge-asc  { background: rgba(96,165,250,0.15); border: 1px solid rgba(96,165,250,0.3); color: var(--blue); }
+.badge-desc { background: rgba(244,114,182,0.15); border: 1px solid rgba(244,114,182,0.3); color: var(--pink); }
+
+/* ── Status log ─────────────────────────── */
+.log-panel {
+  padding: 14px 20px; border-radius: 16px;
+  background: var(--clay-raised);
+  border: 1.5px solid rgba(167,139,250,0.1);
+  margin-bottom: 16px; min-height: 46px;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.2);
+}
+#status-log {
+  font-family: 'Space Mono', monospace; font-size: 12px; color: var(--teal);
+  line-height: 1.5;
+}
+
+/* ── Complexity cards ───────────────────── */
+.complexity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px; margin-top: 4px;
+}
+.complexity-card {
+  padding: 14px 18px; border-radius: 16px;
+  background: var(--clay-card);
+  border: 1.5px solid rgba(167,139,250,0.1);
+  box-shadow: var(--shadow-sm);
+}
+.complexity-card h4 {
+  font-size: 10px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 1.5px; color: var(--text3); margin-bottom: 10px;
+}
+.complexity-card p {
+  font-family: 'Space Mono', monospace; font-size: 13px; line-height: 2;
+}
+.best  { color: var(--green); }
+.avg   { color: var(--amber); }
+.worst { color: var(--red); }
+.space { color: var(--blue); }
+.note  { font-size: 12px; color: var(--text3); line-height: 1.6; font-family: 'Nunito', sans-serif; font-weight: 600; }
+
+/* ── Responsive ─────────────────────────── */
+@media(max-width:600px) {
+  .ctrl-top { flex-direction: column; }
+  .btn-row  { margin-left: 0; }
+  #bars-wrap { height: 200px; }
+  .stats-row { grid-template-columns: repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="clay header">
+    <div class="logo">
+      <div class="logo-orb">⚡</div>
+      <div class="logo-text">
+        <h1>SortViz</h1>
+        <p>DSA Sorting Visualizer · C++ Backend</p>
+      </div>
+    </div>
+    <div class="server-pill">
+      <div class="dot" id="status-dot"></div>
+      <span id="status-text">Connecting...</span>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="clay controls">
+    <div class="ctrl-top">
+
+      <div class="ctrl-group">
+        <div class="ctrl-label">Algorithm</div>
+        <select id="algo" onchange="onAlgoChange()">
+          <option value="bubble">Bubble Sort</option>
+          <option value="selection">Selection Sort</option>
+          <option value="insertion">Insertion Sort</option>
+          <option value="merge">Merge Sort</option>
+          <option value="quick" selected>Quick Sort</option>
+          <option value="heap">Heap Sort</option>
+        </select>
+      </div>
+
+      <!-- Asc / Desc — only for Bubble Sort -->
+      <div class="ctrl-group">
+        <div class="ctrl-label">Order</div>
+        <div class="order-toggle" id="order-toggle">
+          <button class="order-btn active" id="btn-asc" onclick="setOrder('asc')">↑ Asc</button>
+          <button class="order-btn"        id="btn-desc" onclick="setOrder('desc')">↓ Desc</button>
+        </div>
+      </div>
+
+      <div class="ctrl-group">
+        <div class="ctrl-label">Array Size</div>
+        <input type="number" id="arr-size" value="38" min="5" max="100">
+      </div>
+
+      <div class="ctrl-group">
+        <div class="ctrl-label">Speed — <span id="speed-val">3</span>x</div>
+        <input type="range" id="speed" min="1" max="6" value="3"
+               oninput="document.getElementById('speed-val').textContent=this.value">
+      </div>
+
+      <div class="btn-row">
+        <button class="btn" id="gen-btn" onclick="generateArray()">↺ New Array</button>
+        <button class="btn btn-sort" id="sort-btn" onclick="startSort()">▶ Sort</button>
+        <button class="btn btn-stop" id="stop-btn" onclick="stopSort()" disabled>■ Stop</button>
+      </div>
+    </div>
+
+    <!-- Custom input -->
+    <div class="custom-row">
+      <span class="custom-label">Custom array:</span>
+      <input type="text" id="custom-arr" placeholder="e.g.  12, 5, 33, 7, 19, 2, 44">
+      <button class="btn" onclick="useCustomArray()">Use →</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Comparisons</div>
+      <div class="stat-value" id="cmp-val">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Swaps</div>
+      <div class="stat-value" id="swp-val">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Array Size</div>
+      <div class="stat-value" id="size-val">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Step</div>
+      <div class="stat-value" id="step-val" style="font-size:16px;line-height:1.6">0 / 0</div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-wrap"><div id="progress-bar"></div></div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:#4a3d6e"></div>Default</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#fbbf24"></div>Comparing</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#f87171"></div>Swapping</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#2dd4bf"></div>Sorted</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#f472b6"></div>Pivot</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#a78bfa"></div>Min / Key</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#60a5fa"></div>Placed</div>
+  </div>
+
+  <!-- Visualizer -->
+  <div class="clay viz-card">
+    <div class="viz-header">
+      <div class="algo-badge" id="algo-badge">Quick Sort</div>
+      <div class="step-info" id="step-info">Ready</div>
+    </div>
+    <div id="bars-wrap"></div>
+  </div>
+
+  <!-- Sorted Array result -->
+  <div class="clay sorted-section" id="sorted-section">
+    <div class="sorted-title">
+      Sorted Array
+      <span class="sorted-order-badge badge-asc" id="order-badge">↑ Ascending</span>
+    </div>
+    <div class="sorted-wrap" id="sorted-chips"></div>
+  </div>
+
+  <!-- Log -->
+  <div class="log-panel">
+    <div id="status-log">[ Waiting ]  Press "Sort" to fetch steps from the C++ backend and animate.</div>
+  </div>
+
+  <!-- Complexity -->
+  <div class="complexity-grid" id="complexity-grid"></div>
+
+</div><!-- /page -->
+
+<script>
+// ─── Config ────────────────────────────────────────────
+const BACKEND = 'http://localhost:9090';
+
+const COLORS = {
+  default: '#4a3d6e',
+  compare: '#fbbf24',
+  swap:    '#f87171',
+  sorted:  '#2dd4bf',
+  pivot:   '#f472b6',
+  min:     '#a78bfa',
+  set:     '#60a5fa',
+};
+
+const SPEED_MS = [280, 90, 35, 12, 4, 1];
+
+const COMPLEXITY = {
+  bubble:    { best:'O(n)', avg:'O(n²)', worst:'O(n²)', space:'O(1)', note:'Stable sort. Ideal when array is nearly sorted. Supports ascending & descending order.' },
+  selection: { best:'O(n²)', avg:'O(n²)', worst:'O(n²)', space:'O(1)', note:'Not stable. Always O(n²) — no early exit. Simple and predictable.' },
+  insertion: { best:'O(n)', avg:'O(n²)', worst:'O(n²)', space:'O(1)', note:'Stable. Excellent on small or nearly sorted arrays. Online algorithm.' },
+  merge:     { best:'O(n log n)', avg:'O(n log n)', worst:'O(n log n)', space:'O(n)', note:'Stable. Divide & conquer. Consistent, guaranteed O(n log n).' },
+  quick:     { best:'O(n log n)', avg:'O(n log n)', worst:'O(n²)', space:'O(log n)', note:'Not stable. Usually the fastest in practice. Worst case with bad pivot choice.' },
+  heap:      { best:'O(n log n)', avg:'O(n log n)', worst:'O(n log n)', space:'O(1)', note:'Not stable. Uses binary max-heap (tree). Consistent, in-place.' },
+};
+
+// ─── State ─────────────────────────────────────────────
+let arr = [], bars = [], steps = [], sortedIndices = new Set();
+let running = false, stopFlag = false;
+let sortOrder = 'asc';  // asc | desc
+
+// ─── Helpers ───────────────────────────────────────────
+const delay = () => new Promise(r => setTimeout(r, SPEED_MS[+document.getElementById('speed').value - 1]));
+
+function log(msg) { document.getElementById('status-log').textContent = msg; }
+
+function setStats(cmp, swp, size, step, total) {
+  document.getElementById('cmp-val').textContent  = cmp;
+  document.getElementById('swp-val').textContent  = swp;
+  document.getElementById('size-val').textContent = size;
+  document.getElementById('step-val').textContent = step + ' / ' + total;
+  document.getElementById('progress-bar').style.width = (total > 0 ? (step/total*100) : 0) + '%';
+}
+
+function setUI(sorting) {
+  document.getElementById('sort-btn').disabled = sorting;
+  document.getElementById('stop-btn').disabled = !sorting;
+  document.getElementById('gen-btn').disabled  = sorting;
+  document.getElementById('algo').disabled     = sorting;
+}
+
+// ─── Order toggle ───────────────────────────────────────
+function setOrder(o) {
+  sortOrder = o;
+  document.getElementById('btn-asc').classList.toggle('active', o === 'asc');
+  document.getElementById('btn-desc').classList.toggle('active', o === 'desc');
+}
+
+function onAlgoChange() {
+  const a = document.getElementById('algo');
+  const algo = a.value;
+  document.getElementById('algo-badge').textContent = a.options[a.selectedIndex].text;
+  // Show order toggle only for bubble sort
+  document.getElementById('order-toggle').classList.toggle('visible', algo === 'bubble');
+  updateComplexityCard(algo);
+  hideSortedArray();
+}
+
+// ─── Server status ─────────────────────────────────────
+async function checkServer() {
+  try {
+    const r = await fetch(BACKEND + '/ping', { signal: AbortSignal.timeout(3000) });
+    const d = await r.json();
+    document.getElementById('status-dot').className  = 'dot online';
+    document.getElementById('status-text').textContent = 'C++ Server Online';
+    log('[ Connected ]  ' + d.message);
+  } catch {
+    document.getElementById('status-dot').className  = 'dot offline';
+    document.getElementById('status-text').textContent = 'Server Offline';
+    log('[ Error ]  Cannot reach C++ backend at ' + BACKEND + ' — start server.exe first!');
+  }
+}
+
+// ─── Array generation ──────────────────────────────────
+function generateArray() {
+  if (running) return;
+  const n = Math.max(5, Math.min(100, parseInt(document.getElementById('arr-size').value) || 38));
+  arr = Array.from({ length: n }, () => Math.floor(Math.random() * 270) + 20);
+  resetViz();
+  renderBars(arr, {});
+  log('[ Ready ]  Generated ' + arr.length + ' elements — press "Sort" to animate.');
+}
+
+function useCustomArray() {
+  if (running) return;
+  const raw = document.getElementById('custom-arr').value;
+  const parsed = raw.split(/[\s,]+/).filter(Boolean)
+                    .map(Number).filter(n => !isNaN(n) && n > 0 && n <= 500);
+  if (parsed.length < 2) { log('[ Error ]  Enter at least 2 valid numbers (1–500).'); return; }
+  arr = parsed.slice(0, 100);
+  document.getElementById('arr-size').value = arr.length;
+  resetViz();
+  renderBars(arr, {});
+  log('[ Custom ]  Loaded ' + arr.length + ' elements.');
+}
+
+function resetViz() {
+  steps = []; sortedIndices.clear();
+  setStats(0, 0, arr.length, 0, 0);
+  hideSortedArray();
+}
+
+// ─── Bar rendering ─────────────────────────────────────
+function renderBars(data, highlights) {
+  const wrap = document.getElementById('bars-wrap');
+  wrap.innerHTML = ''; bars = [];
+  const maxVal = Math.max(...data);
+  const wrapH  = wrap.offsetHeight || 290;
+  data.forEach((v, i) => {
+    const b = document.createElement('div');
+    b.className = 'bar';
+    b.style.height = Math.max(5, (v / maxVal) * (wrapH - 6)) + 'px';
+    b.style.background = sortedIndices.has(i) ? COLORS.sorted
+                       : (highlights[i] || COLORS.default);
+    wrap.appendChild(b);
+    bars.push(b);
+  });
+}
+
+function applyStep(step) {
+  const { i, j, type, arr: sa, extra } = step;
+  const highlights = {};
+
+  if (type === 'compare') {
+    highlights[i] = COLORS.compare;
+    if (j !== -1) highlights[j] = COLORS.compare;
+    if (extra !== -1) highlights[extra] = COLORS.pivot;
+  } else if (type === 'swap') {
+    highlights[i] = COLORS.swap;
+    if (j !== -1) highlights[j] = COLORS.swap;
+  } else if (type === 'sorted') {
+    sortedIndices.add(i);
+  } else if (type === 'set') {
+    highlights[i] = COLORS.set;
+  } else if (type === 'pivot') {
+    highlights[i] = COLORS.pivot;
+  }
+
+  const maxVal = Math.max(...sa);
+  const wrapH  = document.getElementById('bars-wrap').offsetHeight || 290;
+
+  sa.forEach((v, idx) => {
+    if (!bars[idx]) return;
+    bars[idx].style.height = Math.max(5, (v / maxVal) * (wrapH - 6)) + 'px';
+    bars[idx].style.background =
+      sortedIndices.has(idx) ? COLORS.sorted :
+      highlights[idx]        ? highlights[idx] : COLORS.default;
+  });
+}
+
+// ─── Sorted array display ───────────────────────────────
+function showSortedArray(sortedArr, order) {
+  const section = document.getElementById('sorted-section');
+  const wrap    = document.getElementById('sorted-chips');
+  const badge   = document.getElementById('order-badge');
+
+  wrap.innerHTML = '';
+  sortedArr.forEach((v, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'sorted-chip';
+    chip.textContent = v;
+    chip.style.animationDelay = Math.min(i * 18, 600) + 'ms';
+    wrap.appendChild(chip);
+  });
+
+  if (order === 'desc') {
+    badge.className = 'sorted-order-badge badge-desc';
+    badge.textContent = '↓ Descending';
+  } else {
+    badge.className = 'sorted-order-badge badge-asc';
+    badge.textContent = '↑ Ascending';
+  }
+
+  section.classList.add('visible');
+}
+
+function hideSortedArray() {
+  document.getElementById('sorted-section').classList.remove('visible');
+  document.getElementById('sorted-chips').innerHTML = '';
+}
+
+// ─── Main sort ─────────────────────────────────────────
+async function startSort() {
+  if (running) return;
+  if (arr.length === 0) generateArray();
+
+  const algoEl   = document.getElementById('algo');
+  const algo     = algoEl.value;
+  const algoName = algoEl.options[algoEl.selectedIndex].text;
+  const order    = (algo === 'bubble') ? sortOrder : 'asc';
+
+  setUI(true);
+  hideSortedArray();
+  resetViz();
+  renderBars(arr, {});
+
+  log('[ Fetching ]  Sending array to C++ backend — ' + algoName + (algo==='bubble' ? ' ('+order+')' : '') + '...');
+
+  try {
+    const url = `${BACKEND}/sort?algo=${algo}&order=${order}&arr=${arr.join(',')}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+
+    steps = data.steps;
+    const total = steps.length;
+    sortedIndices.clear();
+
+    let comparisons = 0, swaps = 0;
+    running = true; stopFlag = false;
+
+    log(`[ Running ]  ${algoName} — ${total} steps received from C++ server. Animating...`);
+
+    for (let k = 0; k < steps.length; k++) {
+      if (stopFlag) break;
+      const step = steps[k];
+      if (step.type === 'compare') comparisons++;
+      if (step.type === 'swap')    swaps++;
+
+      applyStep(step);
+      setStats(comparisons, swaps, arr.length, k+1, total);
+      document.getElementById('step-info').textContent = `Step ${k+1} / ${total}`;
+      await delay();
+    }
+
+    if (!stopFlag) {
+      // Flash all bars green
+      bars.forEach((b, i) => {
+        sortedIndices.add(i);
+        setTimeout(() => { b.style.background = COLORS.sorted; }, i * 7);
+      });
+      document.getElementById('progress-bar').style.width = '100%';
+      log(`[ Done ✓ ]  ${algoName} complete — ${comparisons} comparisons, ${swaps} swaps, ${total} steps.`);
+
+      // Show sorted array after a brief pause
+      setTimeout(() => showSortedArray(data.sorted, order), bars.length * 7 + 200);
+    } else {
+      log('[ Stopped ]  Animation interrupted.');
+    }
+
+  } catch (e) {
+    const msg = e.message.includes('fetch') || e.message.includes('connect')
+              ? 'Cannot connect to C++ backend. Is server.exe running on port 9090?'
+              : e.message;
+    log('[ Error ]  ' + msg);
+  }
+
+  running = false; stopFlag = false;
+  setUI(false);
+}
+
+function stopSort() { stopFlag = true; }
+
+// ─── Complexity card ────────────────────────────────────
+function updateComplexityCard(algo) {
+  const c = COMPLEXITY[algo];
+  if (!c) return;
+  document.getElementById('complexity-grid').innerHTML = `
+    <div class="complexity-card">
+      <h4>Time Complexity</h4>
+      <p>Best:&nbsp; <span class="best">${c.best}</span><br>
+         Avg:&nbsp;&nbsp; <span class="avg">${c.avg}</span><br>
+         Worst: <span class="worst">${c.worst}</span></p>
+    </div>
+    <div class="complexity-card">
+      <h4>Space Complexity</h4>
+      <p>Auxiliary: <span class="space">${c.space}</span></p>
+    </div>
+    <div class="complexity-card">
+      <h4>Properties</h4>
+      <p class="note">${c.note}</p>
+    </div>`;
+}
+
+// ─── Init ───────────────────────────────────────────────
+checkServer();
+generateArray();
+updateComplexityCard('quick');
+// Quick sort selected by default — hide order toggle
+document.getElementById('order-toggle').classList.remove('visible');
+</script>
+</body>
+</html>
